@@ -1,0 +1,26 @@
+# Python & Virtualenv
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.DS_Store
+
+# Model weights & large binary/video files (exceed GitHub 100MB limit)
+*.pt
+*.pth
+*.onnx
+*.MOV
+*.mov
+*.mp4
+*.MP4
+*.avi
+*.mkv
+data/
+models/
+
+# Heavy generated outputs (keep only outputs/report_selected/ for report & poster)
+outputs/*
+!outputs/report_selected/
+temp_check_pdf/

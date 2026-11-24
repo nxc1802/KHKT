@@ -1,0 +1,98 @@
+# Cấu hình hệ thống AI phát hiện hành vi xả rác (AI Littering Behavior Detection)
+# Đề tài KHKT THCS: Phát hiện hành vi xả rác bằng Object Detection, ByteTrack và Spatio-Temporal Reasoning
+
+model:
+  # Đường dẫn weights fine-tuned cho person/trash
+  path: "weights/best.pt"
+  confidence: 0.15
+  person_min_confidence: 0.85
+  max_persons: 2
+  imgsz: 1280
+  device: "auto" # 'auto', 'mps', 'cpu', 'cuda'
+  class_mode: "custom" # 'custom' cho 2-class person/trash
+  trash_classes_coco: [24, 25, 26, 28, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 67, 73, 76]
+
+# Phát hiện Thùng rác (Trash Bin / Waste Container)
+bin_detection:
+  enabled: true
+  model_path: "yolov8s-worldv2.pt"
+  classes: ["waste bin", "trash can", "plastic bottle", "water bottle", "cardboard box", "soda can", "plastic bag"]
+  confidence: 0.20
+  bin_iou_threshold: 0.35        # Ngưỡng IoU để coi rác nằm trong thùng
+
+tracking:
+  tracker: "bytetrack.yaml"
+  track_high_thresh: 0.15
+  track_low_thresh: 0.10
+  new_track_thresh: 0.15
+  track_buffer: 30
+  match_thresh: 0.8
+
+history:
+  window_seconds: 3.5           # Độ dài cửa sổ lịch sử lưu trữ (giây)
+  max_missing_seconds: 1.2      # Thời gian tối đa cho phép mất dấu trước khi huỷ track
+  smoothing_alpha: 0.6          # Hệ số làm mượt tọa độ EMA (Exponential Moving Average)
+
+spatial:
+  near_distance_ratio: 0.85      # Ngưỡng khoảng cách gần d_norm = dist / h_person
+  separation_distance_ratio: 0.95 # Ngưỡng khi người đã tách xa rác
+  stationary_motion_ratio: 0.05  # Ngưỡng độ dịch chuyển tối đa để coi vật thể là đứng yên
+  spatial_backtrack_sec: 2.5     # Khoảng thời gian hồi quy vết (backtrack) tìm người đi qua vị trí rác rơi
+
+behavior:
+  min_association_seconds: 0.15  # Thời gian tối thiểu người và rác cùng di chuyển/gần nhau để xác nhận quan hệ
+  min_stationary_seconds: 0.4   # Thời gian rác phải nằm yên tại chỗ mới khẳng định bỏ lại
+  event_cooldown_seconds: 4.0   # Chống cảnh báo trùng lặp cho cùng một người/hành vi
+  pre_existing_buffer_sec: 1.5  # Nếu rác đã xuất hiện đứng yên ngay từ đầu video, coi là rác có sẵn
+
+output:
+  save_video: true
+  save_events: true
+  save_evidence: true
+  draw_trajectories: true
+  draw_boxes: true
+  draw_status_panel: true
+  video_codec: "mp4v"
+
+# Cấu hình Task 2: Phân loại rác Tái chế / Không tái chế
+waste_sorting:
+  model_path: "yolov8s-worldv2.pt"
+  confidence: 0.10
+  imgsz: 1280
+  max_area_ratio: 0.22
+  disappear_confirm_sec: 0.35
+  min_vote_score: 0.15
+  event_cooldown_sec: 1.5
+  recyclable_prompts:
+    - "plastic bottle"
+    - "water bottle"
+    - "aluminum can"
+    - "soda can"
+    - "metal can"
+    - "cardboard"
+    - "cardboard box"
+    - "paper"
+    - "crumpled paper"
+    - "milk carton"
+  non_recyclable_prompts:
+    - "plastic bag"
+    - "white plastic bag"
+    - "snack bag"
+    - "food wrapper"
+    - "candy wrapper"
+    - "tissue paper"
+    - "napkin"
+    - "disposable cup"
+    - "plastic straw"
+  presets:
+    angle_back:
+      - {bin_id: "BIN_NONREC_1", bin_type: "non_recyclable", label: "KHONG TAI CHE", coords: [0.22, 0.58, 0.45, 1.00]}
+      - {bin_id: "BIN_REC_1", bin_type: "recyclable", label: "TAI CHE", coords: [0.45, 0.58, 0.68, 1.00]}
+    angle_front:
+      - {bin_id: "BIN_REC_1", bin_type: "recyclable", label: "TAI CHE", coords: [0.18, 0.05, 0.46, 0.68]}
+      - {bin_id: "BIN_NONREC_1", bin_type: "non_recyclable", label: "KHONG TAI CHE", coords: [0.46, 0.05, 0.72, 0.68]}
+  video_presets:
+    IMG_6820: "angle_back"
+    IMG_6823: "angle_back"
+    IMG_6821: "angle_front"
+    IMG_6822: "angle_front"
